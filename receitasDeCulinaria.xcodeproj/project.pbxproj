@@ -22,6 +22,8 @@
 		2AECDE7023B67CAE00E60681 /* receitasDeCulinariaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AECDE6F23B67CAE00E60681 /* receitasDeCulinariaUITests.swift */; };
 		2AECDE8423B68E4900E60681 /* CustomCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AECDE8323B68E4900E60681 /* CustomCell.swift */; };
 		2AECDE8823B6A0F700E60681 /* InfoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AECDE8723B6A0F700E60681 /* InfoViewController.swift */; };
+		2AFFE32023B98B410053DB8B /* EditReceitaCatCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFFE31F23B98B410053DB8B /* EditReceitaCatCell.swift */; };
+		2AFFE32223B98B5C0053DB8B /* EditReceitaIngCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFFE32123B98B5C0053DB8B /* EditReceitaIngCell.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +65,8 @@
 		2AECDE7123B67CAE00E60681 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2AECDE8323B68E4900E60681 /* CustomCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomCell.swift; sourceTree = "<group>"; };
 		2AECDE8723B6A0F700E60681 /* InfoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoViewController.swift; sourceTree = "<group>"; };
+		2AFFE31F23B98B410053DB8B /* EditReceitaCatCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditReceitaCatCell.swift; sourceTree = "<group>"; };
+		2AFFE32123B98B5C0053DB8B /* EditReceitaIngCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditReceitaIngCell.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +112,8 @@
 				2A03EA1823B6D16300BC26D2 /* IngerdienteTableViewCell.swift */,
 				2A192A7123B7FF6F00778125 /* NewCatgoryViewCell.swift */,
 				2A192A7323B7FF8A00778125 /* NewIngerdienteViewCell.swift */,
+				2AFFE31F23B98B410053DB8B /* EditReceitaCatCell.swift */,
+				2AFFE32123B98B5C0053DB8B /* EditReceitaIngCell.swift */,
 			);
 			path = cells;
 			sourceTree = "<group>";
@@ -313,6 +319,7 @@
 			files = (
 				2A03EA1B23B6EBB400BC26D2 /* EditViewController.swift in Sources */,
 				2A192A7223B7FF6F00778125 /* NewCatgoryViewCell.swift in Sources */,
+				2AFFE32023B98B410053DB8B /* EditReceitaCatCell.swift in Sources */,
 				2AECDE5223B67CAD00E60681 /* ViewController.swift in Sources */,
 				2A192A7023B7E31E00778125 /* AddViewController.swift in Sources */,
 				2AECDE4E23B67CAD00E60681 /* AppDelegate.swift in Sources */,
@@ -320,6 +327,7 @@
 				2AECDE5023B67CAD00E60681 /* SceneDelegate.swift in Sources */,
 				2AECDE8423B68E4900E60681 /* CustomCell.swift in Sources */,
 				2AECDE8823B6A0F700E60681 /* InfoViewController.swift in Sources */,
+				2AFFE32223B98B5C0053DB8B /* EditReceitaIngCell.swift in Sources */,
 				2A192A7423B7FF8A00778125 /* NewIngerdienteViewCell.swift in Sources */,
 				2A03EA1923B6D16300BC26D2 /* IngerdienteTableViewCell.swift in Sources */,
 			);

@@ -13,20 +13,23 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 
     var receitas: [NSManagedObject]!
     var filteredData: [NSManagedObject]!
+    var appDelegate: AppDelegate!
+    var managedContext: NSManagedObjectContext!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         searchBar.delegate = self
         self.hideKeyboard()
-        let app = UIApplication.shared.delegate as! AppDelegate
-        let context = app.persistentContainer.viewContext
+        appDelegate = UIApplication.shared.delegate as? AppDelegate
+        managedContext = appDelegate.persistentContainer.viewContext
         let receitasDB = NSFetchRequest<NSManagedObject>(entityName: "Receita")
         do {
-          receitas = try context.fetch(receitasDB)
+          receitas = try managedContext.fetch(receitasDB)
             filteredData = receitas
         } catch let error as NSError {
           print("Could not fetch. \(error), \(error.userInfo)")
         }
+        tableView.tableFooterView = UIView()
         tableView.reloadData()
         
         //Para @ouvir@ o teclado -> para mover a janela quando abrimos o teclado
@@ -59,9 +62,9 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 
     @IBAction func btnTime(_ sender: UIButton) {
         filteredData = receitas.sorted(by: { (receitaA, receitaB) -> Bool in
-            let timeA = receitaA.value(forKeyPath: "tempo") as? String
-            let timeB = receitaB.value(forKeyPath: "tempo") as? String
-            return timeA! < timeB!
+            let timeA = Float(truncating: receitaA.value(forKeyPath: "tempo") as! NSNumber)
+            let timeB = Float(truncating: receitaB.value(forKeyPath: "tempo") as! NSNumber)
+            return timeA < timeB
         })
         tableView.reloadData()
     }
@@ -94,11 +97,20 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         let customCell =  tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomCell
         let cat = filteredData[indexPath.row].value(forKeyPath: "categoria") as! NSManagedObject
         let nameCat = cat.value(forKeyPath: "nome") as? String
-        let time = filteredData[indexPath.row].value(forKeyPath: "tempo") as? String
+        let time = (filteredData[indexPath.row].value(forKeyPath: "tempo") as! NSNumber).stringValue
         customCell.lbName.text = filteredData[indexPath.row].value(forKeyPath: "nome") as? String
         customCell.lbTime.text = time
         customCell.lbCatgory.text = nameCat
         return customCell
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        guard editingStyle == .delete else {return}
+        let rec = filteredData[indexPath.row]
+        managedContext.delete(rec)
+        filteredData.remove(at: indexPath.row)
+        tableView.deleteRows(at: [indexPath], with: UITableView.RowAnimation.fade)
+        tableView.reloadData()
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -118,7 +130,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         filteredData = receitas.filter({ (receita) -> Bool in
             let name = receita.value(forKeyPath: "nome") as! String
-            let time = receita.value(forKeyPath: "tempo") as! String
+            let time = (receita.value(forKeyPath: "tempo") as! NSDecimalNumber).stringValue
             let cat = receita.value(forKeyPath: "categoria") as! NSManagedObject
             let nameCat = cat.value(forKeyPath: "nome") as! String
             switch searchBar.selectedScopeButtonIndex{
@@ -202,7 +214,7 @@ extension UIViewController{
         toastLabel.layer.cornerRadius = 10;
         toastLabel.clipsToBounds  =  true
         self.view.addSubview(toastLabel)
-        UIView.animate(withDuration: 4.0, delay: 0.1, options: .curveEaseOut, animations: {
+        UIView.animate(withDuration: 10.0, delay: 0.1, options: .curveEaseOut, animations: {
             toastLabel.alpha = 0.0
         }, completion: {(isCompleted) in
             toastLabel.removeFromSuperview()

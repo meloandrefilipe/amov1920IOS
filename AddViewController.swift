@@ -26,6 +26,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
     var selectedCatgory: String!
     var appDelegate: AppDelegate!
     var managedContext: NSManagedObjectContext!
+    var newCatName: String!
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if tableView == tvCatgorys{
@@ -59,40 +60,129 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let cell = tableView.cellForRow(at: indexPath)!
-        cell.accessoryType = .checkmark
-        selectedCatgory = cell.textLabel?.text
-        tableView.reloadData()
-    }
-    
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        guard editingStyle == .delete else {return}
-        if tableView == tvIngredients {
-            ingredientes.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: UITableView.RowAnimation.fade)
+        if tableView == tvCatgorys{
+            let cell = tableView.cellForRow(at: indexPath)!
+            cell.accessoryType = .checkmark
+            selectedCatgory = cell.textLabel?.text
             tableView.reloadData()
         }
-        if tableView == tvCatgorys {
-            let categoria = categorias[indexPath.row]
+    }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        if tableView == tvCatgorys{
+            let btnEdit = editCategory(at: indexPath)
+            let btnDelete = deleteCategory(at: indexPath)
+            let btnCancel = cancel(at: indexPath)
+            return UISwipeActionsConfiguration(actions: [btnCancel,btnDelete,btnEdit])
+        }
+        if tableView == tvIngredients {
+            let btnDelete = deleteIngredient(at: indexPath)
+            let btnCancel = cancel(at: indexPath)
+            return UISwipeActionsConfiguration(actions: [btnCancel, btnDelete])
+        }
+        return UISwipeActionsConfiguration(actions: [])
+    }
+    func cancel(at indexPath: IndexPath) -> UIContextualAction{
+          let action = UIContextualAction(style: .normal, title: "Cancelar") { (action, view, completion) in
+              completion(true)
+          }
+          action.image = UIImage(systemName: "xmark")
+          action.backgroundColor = .gray
+          return action
+       }
+    func editCategory(at indexPath: IndexPath) -> UIContextualAction{
+        let element = categorias[indexPath.row]
+        let action = UIContextualAction(style: .normal, title: "Editar") { (action, view, completion) in
+            let alert = UIAlertController(title: "Editar \(element.value(forKey: "nome") as! String)", message: "Pode editar aqui o nome da categoria", preferredStyle: .alert)
+            let save = UIAlertAction(title: "Guardar", style: UIAlertAction.Style.default) { (action) in
+                let text = alert.textFields?.first?.text
+                if text!.isEmpty{
+                    self.showToast(message: "Insira um nome para a categoria!")
+                }else{
+                    element.setValue(text, forKey: "nome")
+                    do{
+                        try
+                            self.managedContext.save()
+                    }catch let error as NSError{
+                        print("Erro a guardar a receita! \(error)")
+                        self.showToast(message: "Ocorreu um problema, tente mais tarde!")
+                    }
+                    self.tvCatgorys.reloadData()
+                }
+            }
+            let cancel = UIAlertAction(title: "Cancelar", style: UIAlertAction.Style.cancel, handler: nil)
+            
+            alert.addTextField { (textField) in
+                textField.text = element.value(forKey: "nome") as? String
+                textField.placeholder = "Nome da categoria"
+            }
+            alert.addAction(save)
+            alert.addAction(cancel)
+            self.present(alert,animated: true,completion: nil)
+            completion(true)
+       }
+       action.image = UIImage(systemName: "square.and.pencil")
+       action.backgroundColor = .orange
+       return action
+    }
+    
+    
+    func deleteCategory(at indexPath: IndexPath) -> UIContextualAction{
+        let action = UIContextualAction(style: .normal, title: "Apagar") { (action, view, completion) in
+            let categoria = self.categorias[indexPath.row]
             let set = categoria.value(forKey: "receitas") as! NSSet
             let connections = set.allObjects as! [NSManagedObject]
             if connections.count > 0{
-                for conn in connections{
-                    print(conn.value(forKey: "nome") as! String)
-                }
+                self.showToast(message: "Esta categoria esta associada a \(connections.count) receitas!")
             }else{
-                print("Sem ligacoes!")
+                self.managedContext.delete(categoria)
+                do{
+                    try
+                        self.managedContext.save()
+                        self.showToast(message: "Categoria removida com sucesso!")
+                }catch let error as NSError{
+                    print("Erro a guardar a receita! \(error)")
+                    self.showToast(message: "Ocorreu um problema, tente mais tarde!")
+                }
+                self.tvCatgorys.reloadData()
             }
+            completion(true)
         }
-        return
+        action.image = UIImage(systemName: "trash")
+        action.backgroundColor = .red
+        return action
     }
-
+    func deleteIngredient(at indexPath: IndexPath) -> UIContextualAction{
+        let action = UIContextualAction(style: .normal, title: "Apagar") { (action, view, completion) in
+            self.ingredientes.remove(at: indexPath.row)
+            self.tvIngredients.deleteRows(at: [indexPath], with: UITableView.RowAnimation.fade)
+            self.showToast(message: "Ingrediente removida com sucesso!")
+            self.tvIngredients.reloadData()
+            completion(true)
+            do{
+                try
+                    self.managedContext.save()
+                    self.showToast(message: "Categoria removida com sucesso!")
+            }catch let error as NSError{
+                print("Erro a guardar a receita! \(error)")
+                self.showToast(message: "Ocorreu um problema, tente mais tarde!")
+            }
+            self.tvIngredients.reloadData()
+        }
+        action.image = UIImage(systemName: "trash")
+        action.backgroundColor = .red
+        return action
+    }
+    
     
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.hideKeyboard()
         selectedCatgory = ""
+        
+        tvIngredients.tableFooterView = UIView()
+        tvCatgorys.tableFooterView = UIView()
         
         appDelegate = UIApplication.shared.delegate as? AppDelegate
         managedContext = appDelegate.persistentContainer.viewContext
@@ -203,12 +293,15 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
       
     
     func saveReceita(name: String, time: String, description: String){
-        let appDelegate = UIApplication.shared.delegate as! AppDelegate
-        let managedContext = appDelegate.persistentContainer.viewContext
         let entity = NSEntityDescription.entity(forEntityName: "Receita", in: managedContext)!
         let receita = NSManagedObject(entity: entity, insertInto: managedContext)
         
         var categoria: NSManagedObject!
+        
+        if selectedCatgory.isEmpty{
+            self.showToast(message: "Selecione uma categoria!")
+            return
+        }
         
         for cat in categorias{
             if cat.value(forKey: "nome") as? String == selectedCatgory {
@@ -224,7 +317,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
             return
         }
         receita.setValue(name, forKey: "nome")
-        receita.setValue(Decimal(string: time), forKey: "tempo")
+        receita.setValue(Float(time), forKey: "tempo")
         receita.setValue(description, forKey: "descricao")
         receita.mutableSetValue(forKey: "ingredientes").addObjects(from: ingredientes)
         receita.setValue(categoria, forKey: "categoria")
@@ -263,8 +356,6 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
     
     
     func saveCategory(name: String){
-        let appDelegate = UIApplication.shared.delegate as! AppDelegate
-        let managedContext = appDelegate.persistentContainer.viewContext
         let entity = NSEntityDescription.entity(forEntityName: "Categoria", in: managedContext)!
         let categoria = NSManagedObject(entity: entity, insertInto: managedContext)
         categoria.setValue(name, forKey: "nome")

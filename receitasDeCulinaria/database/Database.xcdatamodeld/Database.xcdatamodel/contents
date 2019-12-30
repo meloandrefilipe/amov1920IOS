@@ -13,7 +13,7 @@
     <entity name="Receita" representedClassName=".Receita" syncable="YES">
         <attribute name="descricao" optional="YES" attributeType="String"/>
         <attribute name="nome" optional="YES" attributeType="String"/>
-        <attribute name="tempo" optional="YES" attributeType="Decimal" defaultValueString="0"/>
+        <attribute name="tempo" optional="YES" attributeType="Float" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="categoria" maxCount="1" deletionRule="Nullify" destinationEntity="Categoria" inverseName="receitas" inverseEntity="Categoria"/>
         <relationship name="ingredientes" toMany="YES" minCount="1" deletionRule="Nullify" destinationEntity="Ingrediente" inverseName="receitas" inverseEntity="Ingrediente"/>
     </entity>
