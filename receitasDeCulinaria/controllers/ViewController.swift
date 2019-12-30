@@ -10,56 +10,181 @@ import UIKit
 import CoreData
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
-
+    
+    @IBOutlet weak var searchBar: UITableView!
+    @IBOutlet weak var tableView: UITableView!
+    
+    
     var receitas: [NSManagedObject]!
     var filteredData: [NSManagedObject]!
     var appDelegate: AppDelegate!
     var managedContext: NSManagedObjectContext!
     
     override func viewDidLoad() {
+        navigationController?.navigationBar.barTintColor = UIColor.init(hex: "ffb300")
         super.viewDidLoad()
         searchBar.delegate = self
         self.hideKeyboard()
+        
         appDelegate = UIApplication.shared.delegate as? AppDelegate
         managedContext = appDelegate.persistentContainer.viewContext
+        
         let receitasDB = NSFetchRequest<NSManagedObject>(entityName: "Receita")
         do {
-          receitas = try managedContext.fetch(receitasDB)
+            receitas = try managedContext.fetch(receitasDB)
             filteredData = receitas
         } catch let error as NSError {
-          print("Could not fetch. \(error), \(error.userInfo)")
+            print("Could not fetch. \(error), \(error.userInfo)")
         }
+        
+        
         tableView.tableFooterView = UIView()
         tableView.reloadData()
         
         //Para @ouvir@ o teclado -> para mover a janela quando abrimos o teclado
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillShowNotification, object: nil)
-        
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillHideNotification, object: nil)
-
-        
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
         
         
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        let receitasDB = NSFetchRequest<NSManagedObject>(entityName: "Receita")
+        do {
+            receitas = try managedContext.fetch(receitasDB)
+            filteredData = receitas
+        } catch let error as NSError {
+            print("Could not fetch. \(error), \(error.userInfo)")
+        }
+        
         tableView.reloadData()
     }
     
-    deinit {
-        
-        // deixa de @ouvir@ o telcado
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
-        
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
-        
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?){
+        if segue.destination is InfoViewController{
+            let viewController = segue.destination as? InfoViewController
+            let index: Int = tableView.indexPathForSelectedRow!.row
+            viewController?.receita = filteredData[index]
+        }
     }
     
-    @IBOutlet weak var searchBar: UITableView!
-    @IBOutlet weak var tableView: UITableView!
-
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if filteredData != nil {
+            return filteredData.count
+        }
+        return 0
+    }
+    
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if filteredData != nil {
+            let customCell =  tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomCell
+            let cat = filteredData[indexPath.row].value(forKeyPath: "categoria") as! NSManagedObject
+            let nameCat = cat.value(forKeyPath: "nome") as? String
+            let time = (filteredData[indexPath.row].value(forKeyPath: "tempo") as! NSNumber).stringValue
+            customCell.lbName.text = filteredData[indexPath.row].value(forKeyPath: "nome") as? String
+            customCell.lbTime.text = time
+            customCell.lbCatgory.text = nameCat
+            return customCell
+        }
+        return UITableViewCell()
+    }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let btnDelete = deleteRecepie(at: indexPath)
+        let btnCancel = cancel(at: indexPath)
+        return UISwipeActionsConfiguration(actions: [btnCancel, btnDelete])
+    }
+    
+    
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        guard !searchText.isEmpty else {
+            filteredData = receitas
+            tableView.reloadData()
+            return
+            
+        }
+        filteredData = receitas.filter({ (receita) -> Bool in
+            let name = receita.value(forKeyPath: "nome") as! String
+            let time = (receita.value(forKeyPath: "tempo") as! NSNumber).stringValue
+            let cat = receita.value(forKeyPath: "categoria") as! NSManagedObject
+            let nameCat = cat.value(forKeyPath: "nome") as! String
+            switch searchBar.selectedScopeButtonIndex{
+            case 0:
+                return name.lowercased().contains(searchText.lowercased())
+            case 1:
+                return time.lowercased().contains(searchText.lowercased())
+            case 2:
+                return nameCat.lowercased().contains(searchText.lowercased())
+            default:
+                return false
+                
+            }
+        })
+        tableView.reloadData()
+        
+    }
+    
+    func cancel(at indexPath: IndexPath) -> UIContextualAction{
+        let action = UIContextualAction(style: .normal, title: "Cancelar") { (action, view, completion) in
+            completion(true)
+        }
+        action.image = UIImage(systemName: "xmark")
+        action.backgroundColor = .gray
+        return action
+    }
+    
+    func deleteRecepie(at indexPath: IndexPath) -> UIContextualAction{
+        let action = UIContextualAction(style: .normal, title: "Apagar") { (action, view, completion) in
+            let rec = self.filteredData[indexPath.row]
+            self.managedContext.delete(rec)
+            self.filteredData.remove(at: indexPath.row)
+            self.tableView.deleteRows(at: [indexPath], with: UITableView.RowAnimation.fade)
+            do{
+                try
+                    self.managedContext.save()
+                self.showToast(message: "Aletracoes guardadas com sucesso!")
+            }catch let error as NSError{
+                print("Erro a guardar as alteracoes! \(error)")
+                self.showToast(message: "Ocorreu um problema, tente mais tarde!")
+            }
+            self.showToast(message: "Receita apagada com sucesso!")
+            self.tableView.reloadData()
+            completion(true)
+        }
+        action.image = UIImage(systemName: "trash")
+        action.backgroundColor = .red
+        return action
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
+        let text = searchBar.text!
+        if !text.isEmpty{
+            filteredData = receitas.filter({ (receita) -> Bool in
+                let name = receita.value(forKeyPath: "nome") as! String
+                let time = (receita.value(forKeyPath: "tempo") as! NSNumber).stringValue
+                let cat = receita.value(forKeyPath: "categoria") as! NSManagedObject
+                let nameCat = cat.value(forKeyPath: "nome") as! String
+                switch selectedScope{
+                case 0:
+                    return name.lowercased().contains(text.lowercased())
+                case 1:
+                    return time.lowercased().contains(text.lowercased())
+                case 2:
+                    return nameCat.lowercased().contains(text.lowercased())
+                default:
+                    return false
+                }
+            })
+        }else{
+            filteredData = receitas
+        }
+        tableView.reloadData()
+    }
+    
     @IBAction func btnTime(_ sender: UIButton) {
         filteredData = receitas.sorted(by: { (receitaA, receitaB) -> Bool in
             let timeA = Float(truncating: receitaA.value(forKeyPath: "tempo") as! NSNumber)
@@ -86,94 +211,13 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         })
         tableView.reloadData()
     }
-
-
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return filteredData.count
+    
+    deinit {
+        // deixa de @ouvir@ o telcado
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
     }
-    
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let customCell =  tableView.dequeueReusableCell(withIdentifier: "Cell") as! CustomCell
-        let cat = filteredData[indexPath.row].value(forKeyPath: "categoria") as! NSManagedObject
-        let nameCat = cat.value(forKeyPath: "nome") as? String
-        let time = (filteredData[indexPath.row].value(forKeyPath: "tempo") as! NSNumber).stringValue
-        customCell.lbName.text = filteredData[indexPath.row].value(forKeyPath: "nome") as? String
-        customCell.lbTime.text = time
-        customCell.lbCatgory.text = nameCat
-        return customCell
-    }
-    
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        guard editingStyle == .delete else {return}
-        let rec = filteredData[indexPath.row]
-        managedContext.delete(rec)
-        filteredData.remove(at: indexPath.row)
-        tableView.deleteRows(at: [indexPath], with: UITableView.RowAnimation.fade)
-        tableView.reloadData()
-    }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let viewController = storyboard?.instantiateViewController(withIdentifier: "InfoViewController") as? InfoViewController
-        viewController?.receita = filteredData[indexPath.row]
-        self.navigationController?.pushViewController(viewController!, animated: true)
-    }
-    
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        guard !searchText.isEmpty else {
-            filteredData = receitas
-            tableView.reloadData()
-            return
-            
-        }
-        
-        
-        filteredData = receitas.filter({ (receita) -> Bool in
-            let name = receita.value(forKeyPath: "nome") as! String
-            let time = (receita.value(forKeyPath: "tempo") as! NSDecimalNumber).stringValue
-            let cat = receita.value(forKeyPath: "categoria") as! NSManagedObject
-            let nameCat = cat.value(forKeyPath: "nome") as! String
-            switch searchBar.selectedScopeButtonIndex{
-            case 0:
-                return name.lowercased().contains(searchText.lowercased())
-            case 1:
-                return time.lowercased().contains(searchText.lowercased())
-            case 2:
-                return nameCat.lowercased().contains(searchText.lowercased())
-            default:
-                return false
-                
-            }
-        })
-        tableView.reloadData()
-
-    }
-    
-    func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
-        let text = searchBar.text!
-        if !text.isEmpty{
-            filteredData = receitas.filter({ (receita) -> Bool in
-                let name = receita.value(forKeyPath: "nome") as! String
-                let time = receita.value(forKeyPath: "tempo") as! String
-                let cat = receita.value(forKeyPath: "categoria") as! NSManagedObject
-                let nameCat = cat.value(forKeyPath: "nome") as! String
-                switch selectedScope{
-                case 0:
-                    return name.lowercased().contains(text.lowercased())
-                case 1:
-                    return time.lowercased().contains(text.lowercased())
-                case 2:
-                    return nameCat.lowercased().contains(text.lowercased())
-                default:
-                    return false
-                }
-            })
-        }else{
-            filteredData = receitas
-        }
-        tableView.reloadData()
-    }
-    
 }
 
 extension UIViewController {
@@ -182,7 +226,7 @@ extension UIViewController {
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
     }
-
+    
     @objc func dismissKeyboard() {
         view.endEditing(true)
     }
@@ -202,7 +246,7 @@ extension UIViewController {
 
 extension UIViewController{
     func showToast(message : String) {
-
+        
         let toastLabel = UILabel(frame: CGRect(x: 5, y: self.view.frame.size.height-100, width: (self.view.frame.width - 10), height: 35))
         toastLabel.numberOfLines = 0
         toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
@@ -219,6 +263,28 @@ extension UIViewController{
         }, completion: {(isCompleted) in
             toastLabel.removeFromSuperview()
         })
+    }
+}
+
+extension UIColor {
+    convenience init(hex:String, alpha:CGFloat = 1.0) {
+        var cString:String = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        var rgbValue:UInt64 = 10066329 //color #999999 if string has wrong format
+        
+        if (cString.hasPrefix("#")) {
+            cString.remove(at: cString.startIndex)
+        }
+        
+        if ((cString.count) == 6) {
+            Scanner(string: cString).scanHexInt64(&rgbValue)
+        }
+        
+        self.init(
+            red: CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0,
+            green: CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0,
+            blue: CGFloat(rgbValue & 0x0000FF) / 255.0,
+            alpha: alpha
+        )
     }
 }
 

@@ -10,7 +10,7 @@ import UIKit
 import CoreData
 
 class AddViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
-
+    
     @IBOutlet weak var lbName: UITextField!
     @IBOutlet weak var lbTime: UITextField!
     @IBOutlet weak var lbCatgory: UITextField!
@@ -28,6 +28,51 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
     var managedContext: NSManagedObjectContext!
     var newCatName: String!
     
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.hideKeyboard() // funcao para esconder o teclado quando clicamos fora do mesmo
+        selectedCatgory = ""
+        
+        // define que nas tabelas apenas sao mostradas linhas para os elementos existentes
+        tvIngredients.tableFooterView = UIView()
+        tvCatgorys.tableFooterView = UIView()
+        lbDescricao.textContainerInset = UIEdgeInsets(top: 10,left: 10,bottom: 10,right: 10)
+        // criar o acesso ao container presistente que contem a informacao da coredata
+        appDelegate = UIApplication.shared.delegate as? AppDelegate
+        managedContext = appDelegate.persistentContainer.viewContext
+        
+        let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "Categoria")
+        
+        do {
+            categorias = try managedContext.fetch(fetchRequest)
+        } catch let error as NSError {
+            print("Could not fetch. \(error), \(error.userInfo)")
+        }
+        
+        //Para @ouvir@ o teclado -> para mover a janela quando abrimos o teclado
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        
+        // Recarrega a informacao das tableviews (usado essencialmente para quando o ultilizador "volta" a view)
+        tvCatgorys.reloadData()
+        tvIngredients.reloadData()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "Categoria")
+        
+        do {
+            categorias = try managedContext.fetch(fetchRequest)
+        } catch let error as NSError {
+            print("Could not fetch. \(error), \(error.userInfo)")
+        }
+        
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if tableView == tvCatgorys{
             return categorias.count
@@ -36,7 +81,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
         }
         return 0
     }
-       
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if tableView == tvCatgorys{
             let cellCatgory = tableView.dequeueReusableCell(withIdentifier: "CategoryCell" ) as! NewCatgoryViewCell
@@ -82,14 +127,17 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
         }
         return UISwipeActionsConfiguration(actions: [])
     }
+    
+    
     func cancel(at indexPath: IndexPath) -> UIContextualAction{
-          let action = UIContextualAction(style: .normal, title: "Cancelar") { (action, view, completion) in
-              completion(true)
-          }
-          action.image = UIImage(systemName: "xmark")
-          action.backgroundColor = .gray
-          return action
-       }
+        let action = UIContextualAction(style: .normal, title: "Cancelar") { (action, view, completion) in
+            completion(true)
+        }
+        action.image = UIImage(systemName: "xmark")
+        action.backgroundColor = .gray
+        return action
+    }
+    
     func editCategory(at indexPath: IndexPath) -> UIContextualAction{
         let element = categorias[indexPath.row]
         let action = UIContextualAction(style: .normal, title: "Editar") { (action, view, completion) in
@@ -120,12 +168,11 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
             alert.addAction(cancel)
             self.present(alert,animated: true,completion: nil)
             completion(true)
-       }
-       action.image = UIImage(systemName: "square.and.pencil")
-       action.backgroundColor = .orange
-       return action
+        }
+        action.image = UIImage(systemName: "square.and.pencil")
+        action.backgroundColor = .orange
+        return action
     }
-    
     
     func deleteCategory(at indexPath: IndexPath) -> UIContextualAction{
         let action = UIContextualAction(style: .normal, title: "Apagar") { (action, view, completion) in
@@ -139,7 +186,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
                 do{
                     try
                         self.managedContext.save()
-                        self.showToast(message: "Categoria removida com sucesso!")
+                    self.showToast(message: "Categoria removida com sucesso!")
                 }catch let error as NSError{
                     print("Erro a guardar a receita! \(error)")
                     self.showToast(message: "Ocorreu um problema, tente mais tarde!")
@@ -152,6 +199,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
         action.backgroundColor = .red
         return action
     }
+    
     func deleteIngredient(at indexPath: IndexPath) -> UIContextualAction{
         let action = UIContextualAction(style: .normal, title: "Apagar") { (action, view, completion) in
             self.ingredientes.remove(at: indexPath.row)
@@ -162,7 +210,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
             do{
                 try
                     self.managedContext.save()
-                    self.showToast(message: "Categoria removida com sucesso!")
+                self.showToast(message: "Categoria removida com sucesso!")
             }catch let error as NSError{
                 print("Erro a guardar a receita! \(error)")
                 self.showToast(message: "Ocorreu um problema, tente mais tarde!")
@@ -175,122 +223,6 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
     }
     
     
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        self.hideKeyboard()
-        selectedCatgory = ""
-        
-        tvIngredients.tableFooterView = UIView()
-        tvCatgorys.tableFooterView = UIView()
-        
-        appDelegate = UIApplication.shared.delegate as? AppDelegate
-        managedContext = appDelegate.persistentContainer.viewContext
-        
-        
-        //Para @ouvir@ o teclado -> para mover a janela quando abrimos o teclado
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillShowNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillHideNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChange(notification:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
-        tvCatgorys.reloadData()
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-      super.viewWillAppear(animated)
-      
-      let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "Categoria")
-      
-      do {
-        categorias = try managedContext.fetch(fetchRequest)
-      } catch let error as NSError {
-        print("Could not fetch. \(error), \(error.userInfo)")
-      }
-    }
-    
-    
-    
-    @IBAction func btnAddCat(_ sender: UIButton) {
-          let catName = lbCatgory.text
-          if catName!.isEmpty{
-              self.showToast(message: "Insira um nome para a categoria!")
-          }else {
-              var existe: Bool = false
-              for categoria in categorias{
-                  if categoria.value(forKey: "nome") as? String == catName {
-                      existe = true
-                  }
-              }
-              if !existe{
-                  saveCategory(name: catName!)
-              }else{
-                  self.showToast(message: "Já existe esta categoria!")
-              }
-          }
-      }
-      
-      @IBAction func btnAddIng(_ sender: Any) {
-          let ingName = lbIngName.text!
-          let ingQuant = lbIngQuantity.text!
-          let ingUnit = lbIngUnit.text!
-          if ingName.isEmpty || ingUnit.isEmpty || ingQuant.isEmpty{
-              self.showToast(message: "Insira todos os valores do ingrediente!")
-          }else {
-            var existe: Bool = false
-            var ing: NSManagedObject!
-            for ingrediente in ingredientes{
-                if ingrediente.value(forKey: "nome") as? String == ingName {
-                    existe = true
-                    ing = ingrediente
-                }
-            }
-            let quant = Float(ingQuant)!
-            if quant > 0{
-                if !existe{
-                    addIngrediente(name: ingName, quantity: NSNumber(value: quant) , unit: ingUnit)
-                }else if ing != nil{
-                    let originalQuant = Float((ing.value(forKey: "quantidade") as! NSNumber).stringValue)!
-                    let total = quant + originalQuant
-                    ing.setValue(NSNumber(value: total), forKey: "quantidade")
-                }
-            }else{
-                self.showToast(message: "Pelo menos coloque algum \(ingName)")
-            }
-          }
-        tvIngredients.reloadData()
-      }
-      
-      @IBAction func btnAddReceita(_ sender: Any) {
-        let name = lbName.text!
-        let time = lbTime.text!
-        let description = lbDescricao.text!
-        
-        if name.isEmpty{
-            self.showToast(message: "Insira o nome da receita!")
-            return
-        }
-        if time.isEmpty{
-            self.showToast(message: "Insira o tempo de preparacao da receita!")
-            return
-        }
-        if description.isEmpty{
-            self.showToast(message: "Insira a descrição da receita!")
-            return
-        }
-        
-        saveReceita(name: name, time: time, description: description)
-      }
-      
-      @IBAction func btnCancel(_ sender: Any) {
-          lbName.text = ""
-          lbTime.text = ""
-          lbCatgory.text = ""
-          lbDescricao.text = ""
-          lbIngName.text = ""
-          lbIngQuantity.text = ""
-          lbIngUnit.text = ""
-          _ = navigationController?.popViewController(animated: true)
-      }
-      
     
     func saveReceita(name: String, time: String, description: String){
         let entity = NSEntityDescription.entity(forEntityName: "Receita", in: managedContext)!
@@ -336,7 +268,7 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
         showToast(message: "Receita Adicionada com sucesso!")
         _ = navigationController?.popViewController(animated: true)
     }
-
+    
     
     func addIngrediente(name: String, quantity: NSNumber, unit: String){
         let appDelegate = UIApplication.shared.delegate as! AppDelegate
@@ -363,12 +295,107 @@ class AddViewController: UIViewController, UITableViewDataSource, UITableViewDel
         do{
             try
                 managedContext.save()
-                categorias.append(categoria)
+            categorias.append(categoria)
         }catch let error as NSError{
             print("Erro a guardar a categoria! \(error)")
         }
         tvCatgorys.reloadData()
     }
+    
+    
+    @IBAction func btnAddCat(_ sender: UIButton) {
+        let catName = lbCatgory.text
+        if catName!.isEmpty{
+            self.showToast(message: "Insira um nome para a categoria!")
+        }else {
+            var existe: Bool = false
+            for categoria in categorias{
+                if categoria.value(forKey: "nome") as? String == catName {
+                    existe = true
+                }
+            }
+            if !existe{
+                saveCategory(name: catName!)
+            }else{
+                self.showToast(message: "Já existe esta categoria!")
+            }
+        }
+    }
+    
+    @IBAction func btnAddIng(_ sender: Any) {
+        let ingName = lbIngName.text!
+        let ingQuant = lbIngQuantity.text!
+        let ingUnit = lbIngUnit.text!
+        let num = Float(ingQuant)
+        if num == nil {
+            self.showToast(message: "Insira uma quantidade valida!")
+            return
+        }
+        if ingName.isEmpty || ingUnit.isEmpty || ingQuant.isEmpty{
+            self.showToast(message: "Insira todos os valores do ingrediente!")
+        }else {
+            var existe: Bool = false
+            var ing: NSManagedObject!
+            for ingrediente in ingredientes{
+                if ingrediente.value(forKey: "nome") as? String == ingName {
+                    existe = true
+                    ing = ingrediente
+                }
+            }
+            let quant = Float(ingQuant)!
+            if quant > 0{
+                if !existe{
+                    addIngrediente(name: ingName, quantity: NSNumber(value: quant) , unit: ingUnit)
+                }else if ing != nil{
+                    let originalQuant = Float((ing.value(forKey: "quantidade") as! NSNumber).stringValue)!
+                    let total = quant + originalQuant
+                    ing.setValue(NSNumber(value: total), forKey: "quantidade")
+                }
+            }else{
+                self.showToast(message: "Pelo menos coloque algum \(ingName)")
+            }
+        }
+        tvIngredients.reloadData()
+    }
+    
+    @IBAction func btnAddReceita(_ sender: Any) {
+        let name = lbName.text!
+        let time = lbTime.text!
+        let description = lbDescricao.text!
+        
+        if name.isEmpty{
+            self.showToast(message: "Insira o nome da receita!")
+            return
+        }
+        if time.isEmpty{
+            self.showToast(message: "Insira o tempo de preparacao da receita!")
+            return
+        }
+        let num = Float(time)
+        if num == nil {
+            self.showToast(message: "Insira um tempo valido!")
+            return
+        }
+        if description.isEmpty{
+            self.showToast(message: "Insira a descrição da receita!")
+            return
+        }
+        
+        saveReceita(name: name, time: time, description: description)
+    }
+    
+    @IBAction func btnCancel(_ sender: Any) {
+        lbName.text = ""
+        lbTime.text = ""
+        lbCatgory.text = ""
+        lbDescricao.text = ""
+        lbIngName.text = ""
+        lbIngQuantity.text = ""
+        lbIngUnit.text = ""
+        _ = navigationController?.popViewController(animated: true)
+    }
+    
+    
     
     deinit {
         

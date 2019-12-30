@@ -10,8 +10,9 @@ import Foundation
 import UIKit
 
 class CustomCell: UITableViewCell {
+    
     @IBOutlet weak var lbName: UILabel!
     @IBOutlet weak var lbTime: UILabel!
     @IBOutlet weak var lbCatgory: UILabel!
-    
+
 }

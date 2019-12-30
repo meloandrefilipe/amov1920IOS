@@ -9,8 +9,8 @@
 import UIKit
 
 class IngerdienteTableViewCell: UITableViewCell {
+    
     @IBOutlet weak var lbName: UILabel!
     @IBOutlet weak var lbQuantity: UILabel!
     
-
 }
